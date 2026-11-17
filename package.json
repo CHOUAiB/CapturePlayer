@@ -1,6 +1,6 @@
 {
   "name": "captureplayer",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Electron + Vite + React + Tailwind CapturePlayer – Play your capture card instantly and share with Discord.",
   "author": {
     "name": "galusperes"
@@ -28,7 +28,7 @@
     "@vitejs/plugin-react": "6.0.1",
     "autoprefixer": "^10.4.16",
     "electron": "^42.11.18",
-    "electron-builder": "^26.18.0",
+    "electron-builder": "^25.1.0",
     "esbuild": "^0.28.2",
     "eslint": "^8.57.0",
     "eslint-config-airbnb": "19.0.4",
@@ -116,5 +116,9 @@
         }
       ]
     }
+  },
+  "allowScripts": {
+    "electron-winstaller@5.4.0": true,
+    "esbuild@0.28.2": true
   }
 }
