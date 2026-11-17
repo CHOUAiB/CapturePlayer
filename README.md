@@ -69,6 +69,7 @@ CapturePlayer does one thing perfectly: **Shows your capture card feed. Nothing 
 - **Custom aspect ratio presets** - create and save your own ratios
 - Fullscreen mode with **zoom control** (Ctrl + Mouse Wheel)
 - Always on Top option to keep window visible
+- Optional TV test pattern when the capture signal is missing, with SMPTE, grayscale, and grid templates
 - **Color adjustment presets** - save your favorite brightness, contrast, saturation & hue settings
 
 ### Simple Configuration

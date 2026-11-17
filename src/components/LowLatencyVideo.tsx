@@ -5,6 +5,7 @@
 import React, { useEffect, useRef } from 'react';
 import { createGlVideoPipeline } from './glVideoPipeline';
 import type { GlFilterState, GlVideoPipeline } from './glVideoPipeline';
+import { createVideoSignalDetector } from '../utils/videoSignal';
 
 export type FrameStats = {
   width: number;
@@ -42,6 +43,7 @@ type Props = {
   diagnosticsEnabled: boolean;
   onResolution?: (res: { w: number; h: number; fps?: number } | null) => void;
   onDebugInfo?: (info: FrameStats | null) => void;
+  onSignalChange?: (hasSignal: boolean) => void;
   onFallback: (reason: string) => void;
 };
 
@@ -52,6 +54,7 @@ const LowLatencyVideo: React.FC<Props> = ({
   diagnosticsEnabled,
   onResolution,
   onDebugInfo,
+  onSignalChange,
   onFallback
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -65,6 +68,8 @@ const LowLatencyVideo: React.FC<Props> = ({
   onResolutionRef.current = onResolution;
   const onDebugInfoRef = useRef(onDebugInfo);
   onDebugInfoRef.current = onDebugInfo;
+  const onSignalChangeRef = useRef(onSignalChange);
+  onSignalChangeRef.current = onSignalChange;
   const diagnosticsEnabledRef = useRef(diagnosticsEnabled);
   diagnosticsEnabledRef.current = diagnosticsEnabled;
   const onFallbackRef = useRef(onFallback);
@@ -125,6 +130,7 @@ const LowLatencyVideo: React.FC<Props> = ({
     let fpsWindowStart = performance.now();
     let fpsFrameCount = 0;
     let lastSignature: string | null = null;
+    const inspectSignal = createVideoSignalDetector((hasSignal) => onSignalChangeRef.current?.(hasSignal));
 
     const trackFps = () => {
       const frameRate = track.getSettings?.().frameRate;
@@ -233,6 +239,7 @@ const LowLatencyVideo: React.FC<Props> = ({
 
           width = frame.displayWidth;
           height = frame.displayHeight;
+          inspectSignal(frame, now);
 
           if (!pipeline) {
             canvas.width = width;

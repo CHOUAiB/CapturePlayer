@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSettings } from '../../context/SettingsContext';
 import InfoHint from './InfoHint';
+import { SimpleSelect } from '../SimpleSelect';
 
 const aspectModes = [
   { value: 'auto', label: 'Auto' },
@@ -190,6 +191,54 @@ export function DisplayTab({
         </div>
       </div>
 
+      {/* No-signal test pattern */}
+      <div>
+        <div className="mb-1">No Signal:</div>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => settings.setShowTvPattern(!settings.showTvPattern)}
+            aria-pressed={settings.showTvPattern}
+            className={`
+              w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all
+              ${
+                settings.showTvPattern
+                  ? 'bg-gradient-to-br from-blue-600 to-indigo-500 border-blue-500'
+                  : 'bg-gradient-to-br from-zinc-800/50 to-zinc-700/50 border-zinc-600/50 hover:from-zinc-700/70 hover:to-zinc-600/70 hover:border-zinc-500/70'
+              }
+              focus:outline-none focus:ring-2 focus:ring-blue-500/50
+            `}
+          >
+            {settings.showTvPattern && (
+              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+              </svg>
+            )}
+          </button>
+          <span
+            onClick={() => settings.setShowTvPattern(!settings.showTvPattern)}
+            className="text-sm text-white/90 cursor-pointer select-none"
+          >
+            Show TV pattern when no signal
+          </span>
+        </div>
+        {settings.showTvPattern && (
+          <div className="mt-2 flex items-center gap-3">
+            <span className="shrink-0 text-sm text-white/80">Template:</span>
+            <div className="w-56">
+              <SimpleSelect
+                value={settings.tvPatternTemplate}
+                onChange={settings.setTvPatternTemplate}
+                options={[
+                  { value: 'smpte', label: 'SMPTE Color Bars' },
+                  { value: 'grayscale', label: 'Grayscale' },
+                  { value: 'grid', label: 'Test Grid' }
+                ]}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Advanced */}
       <div>
         <div className="mb-1">Advanced:</div>
@@ -371,6 +420,8 @@ export function useViewTabActions(isFullscreen = false, fullscreenZoom = 100, se
     // Advanced section defaults
     settings.setLowLatencyRenderer(false);
     settings.setShowDiagnosticsOverlay(false);
+    settings.setShowTvPattern(false);
+    settings.setTvPatternTemplate('smpte');
     void window.electronAPI.setDisableGpuVsync?.(false);
     // The vsync checkbox holds local state inside DisplayTab - tell it to re-read.
     window.dispatchEvent(new Event('captureplayer:vsync-changed'));

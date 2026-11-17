@@ -40,6 +40,8 @@ export type Settings = {
   autostartWithDevices: boolean;
   showDiagnosticsOverlay: boolean;
   lowLatencyRenderer: boolean;
+  showTvPattern: boolean;
+  tvPatternTemplate: string;
 
   setAutoAspectRatio(v: boolean): void;
   setManualAspectRatio(v: string): void;
@@ -50,6 +52,8 @@ export type Settings = {
   setAutostartWithDevices(v: boolean): void;
   setShowDiagnosticsOverlay(v: boolean): void;
   setLowLatencyRenderer(v: boolean): void;
+  setShowTvPattern(v: boolean): void;
+  setTvPatternTemplate(v: string): void;
 
   setVideoDevice(v: string): void;
   setAudioDevice(a: string): void;
@@ -127,7 +131,9 @@ const DEFAULT_SETTINGS = {
   autostartWithDevices: false,
   showDiagnosticsOverlay: false,
   // Experimental render path - opt-in.
-  lowLatencyRenderer: false
+  lowLatencyRenderer: false,
+  showTvPattern: false,
+  tvPatternTemplate: 'smpte'
 };
 
 type StoredSettings = typeof DEFAULT_SETTINGS;
@@ -163,7 +169,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         typeof loaded.hoverDeviceIcons === 'object' &&
         !Array.isArray(loaded.hoverDeviceIcons)
           ? Object.fromEntries(Object.entries(loaded.hoverDeviceIcons).filter(([, icon]) => typeof icon === 'string'))
-          : {}
+          : {},
+      showTvPattern: typeof loaded.showTvPattern === 'boolean' ? loaded.showTvPattern : DEFAULT_SETTINGS.showTvPattern,
+      tvPatternTemplate:
+        typeof loaded.tvPatternTemplate === 'string' &&
+        ['smpte', 'grayscale', 'grid'].includes(loaded.tvPatternTemplate)
+          ? loaded.tvPatternTemplate
+          : DEFAULT_SETTINGS.tvPatternTemplate
     };
   });
 
@@ -195,7 +207,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     customRatios,
     autostartWithDevices,
     showDiagnosticsOverlay,
-    lowLatencyRenderer
+    lowLatencyRenderer,
+    showTvPattern,
+    tvPatternTemplate
   } = allSettings;
 
   // Debounced save function to batch localStorage writes
@@ -252,6 +266,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const setAutostartWithDevices = useMemo(() => createSetter('autostartWithDevices'), [createSetter]);
   const setShowDiagnosticsOverlay = useMemo(() => createSetter('showDiagnosticsOverlay'), [createSetter]);
   const setLowLatencyRenderer = useMemo(() => createSetter('lowLatencyRenderer'), [createSetter]);
+  const setShowTvPattern = useMemo(() => createSetter('showTvPattern'), [createSetter]);
+  const setTvPatternTemplate = useMemo(() => createSetter('tvPatternTemplate'), [createSetter]);
 
   const value: Settings = useMemo(
     () => ({
@@ -282,6 +298,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       autostartWithDevices,
       showDiagnosticsOverlay,
       lowLatencyRenderer,
+      showTvPattern,
+      tvPatternTemplate,
       setVideoDevice,
       setAudioDevice,
       setExcludedHoverDevices,
@@ -308,7 +326,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setCustomRatios,
       setAutostartWithDevices,
       setShowDiagnosticsOverlay,
-      setLowLatencyRenderer
+      setLowLatencyRenderer,
+      setShowTvPattern,
+      setTvPatternTemplate
     }),
     [
       videoDevice,
@@ -338,6 +358,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       autostartWithDevices,
       showDiagnosticsOverlay,
       lowLatencyRenderer,
+      showTvPattern,
+      tvPatternTemplate,
       setVideoDevice,
       setAudioDevice,
       setExcludedHoverDevices,
@@ -364,7 +386,9 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setCustomRatios,
       setAutostartWithDevices,
       setShowDiagnosticsOverlay,
-      setLowLatencyRenderer
+      setLowLatencyRenderer,
+      setShowTvPattern,
+      setTvPatternTemplate
     ]
   );
 

@@ -6,6 +6,72 @@ import type { FrameStats } from './LowLatencyVideo';
 import type { GlFilterState } from './glVideoPipeline';
 import playIcon from '../assets/icons/play.png';
 import settingsIcon from '../assets/icons/settings.svg';
+import { createVideoSignalDetector } from '../utils/videoSignal';
+
+type TvPatternTemplate = 'smpte' | 'grayscale' | 'grid';
+
+const colorBars = ['#c0c0c0', '#c0c000', '#00c0c0', '#00c000', '#c000c0', '#c00000', '#0000c0'];
+
+function TvPattern({ template }: { template: TvPatternTemplate }) {
+  if (template === 'grid') {
+    return (
+      <svg className="absolute inset-0 z-10 w-full h-full bg-black" viewBox="0 0 1600 900" aria-label="TV test grid">
+        <g stroke="#00ff66" strokeOpacity="0.75" strokeWidth="2">
+          {Array.from({ length: 17 }, (_, index) => (
+            <line key={`v-${index}`} x1={index * 100} y1="0" x2={index * 100} y2="900" />
+          ))}
+          {Array.from({ length: 10 }, (_, index) => (
+            <line key={`h-${index}`} x1="0" y1={index * 100} x2="1600" y2={index * 100} />
+          ))}
+          <circle cx="800" cy="450" r="200" fill="none" />
+          <circle cx="800" cy="450" r="100" fill="none" />
+          <line x1="800" y1="0" x2="800" y2="900" />
+          <line x1="0" y1="450" x2="1600" y2="450" />
+        </g>
+      </svg>
+    );
+  }
+
+  if (template === 'grayscale') {
+    return (
+      <svg className="absolute inset-0 z-10 w-full h-full" viewBox="0 0 1600 900" aria-label="Grayscale test pattern">
+        {Array.from({ length: 16 }, (_, index) => {
+          const value = Math.round((index / 15) * 255);
+          return (
+            <rect key={index} x={index * 100} y="0" width="100" height="900" fill={`rgb(${value},${value},${value})`} />
+          );
+        })}
+      </svg>
+    );
+  }
+
+  return (
+    <svg className="absolute inset-0 z-10 w-full h-full" viewBox="0 0 1600 900" aria-label="SMPTE color bars">
+      {colorBars.map((color, index) => (
+        <rect
+          key={color}
+          x={index * (1600 / colorBars.length)}
+          y="0"
+          width={1600 / colorBars.length + 1}
+          height="600"
+          fill={color}
+        />
+      ))}
+      <rect x="0" y="600" width="228" height="150" fill="#0000c0" />
+      <rect x="228" y="600" width="228" height="150" fill="#131313" />
+      <rect x="456" y="600" width="228" height="150" fill="#c000c0" />
+      <rect x="684" y="600" width="232" height="150" fill="#131313" />
+      <rect x="916" y="600" width="228" height="150" fill="#00c0c0" />
+      <rect x="1144" y="600" width="228" height="150" fill="#131313" />
+      <rect x="1372" y="600" width="228" height="150" fill="#c0c0c0" />
+      <rect x="0" y="750" width="1600" height="150" fill="#131313" />
+      <rect x="228" y="750" width="228" height="150" fill="#c0c0c0" />
+      <rect x="456" y="750" width="228" height="150" fill="#0000c0" />
+      <rect x="916" y="750" width="228" height="150" fill="#131313" />
+      <rect x="1144" y="750" width="228" height="150" fill="#000000" />
+    </svg>
+  );
+}
 
 export type Props = {
   stream: MediaStream | null;
@@ -41,12 +107,52 @@ const VideoCanvas: React.FC<Props> = ({
   const [debugInfo, setDebugInfo] = useState<FrameStats | null>(null);
   const [glFailed, setGlFailed] = useState(false);
   const [videoWarmup, setVideoWarmup] = useState(false);
+  const [hasSignal, setHasSignal] = useState(true);
   const isDev = import.meta.env.DEV;
 
   // Prefer the low-latency WebGL path (MediaStreamTrackProcessor + desynchronized
   // canvas); fall back to the classic <video> element if it is unavailable or fails.
   const hasVideoTrack = !!stream && stream.getVideoTracks().length > 0;
   const useGlRenderer = settings.lowLatencyRenderer && !glFailed && hasVideoTrack && isLowLatencySupported();
+
+  useEffect(() => {
+    const track = stream?.getVideoTracks()[0];
+    if (!track) {
+      setHasSignal(false);
+      return undefined;
+    }
+
+    setHasSignal(!track.muted && track.readyState === 'live');
+    const onMute = () => setHasSignal(false);
+    const onUnmute = () => setHasSignal(true);
+    const onEnded = () => setHasSignal(false);
+    track.addEventListener('mute', onMute);
+    track.addEventListener('unmute', onUnmute);
+    track.addEventListener('ended', onEnded);
+
+    if (useGlRenderer) {
+      return () => {
+        track.removeEventListener('mute', onMute);
+        track.removeEventListener('unmute', onUnmute);
+        track.removeEventListener('ended', onEnded);
+      };
+    }
+
+    const video = videoRef.current;
+    const inspectSignal = createVideoSignalDetector(setHasSignal);
+    const intervalId = window.setInterval(() => {
+      if (video && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth && video.videoHeight) {
+        inspectSignal(video, performance.now());
+      }
+    }, 500);
+
+    return () => {
+      clearInterval(intervalId);
+      track.removeEventListener('mute', onMute);
+      track.removeEventListener('unmute', onUnmute);
+      track.removeEventListener('ended', onEnded);
+    };
+  }, [stream, useGlRenderer]);
 
   // Image Enhancement Modes - CSS image-rendering hint, applied by the browser compositor
   const getEnhancementConfig = (mode: string) => {
@@ -472,6 +578,7 @@ const VideoCanvas: React.FC<Props> = ({
             filters={glFilters}
             diagnosticsEnabled={isDev && settings.showDiagnosticsOverlay && running}
             onResolution={setResolution}
+            onSignalChange={setHasSignal}
             onFallback={handleGlFallback}
           />
         ) : (
@@ -484,6 +591,13 @@ const VideoCanvas: React.FC<Props> = ({
             style={videoStyle}
           />
         )}
+
+        {settings.showTvPattern &&
+          running &&
+          !isProcessing &&
+          !isInitializing &&
+          settings.videoDevice !== '' &&
+          !hasSignal && <TvPattern template={settings.tvPatternTemplate as TvPatternTemplate} />}
 
         {isDev && settings.showDiagnosticsOverlay && running && !useGlRenderer && debugInfo && (
           <div
